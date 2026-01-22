@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Office Departure Calculator</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (UMD) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Main Application Script -->
+    <script type="text/babel" data-presets="env,react">
+      /** @jsx React.createElement */
+      /** @jsxFrag React.Fragment */
+
+      const { useState, useMemo } = React;
+
+      /**
+       * -------------------------
+       * Logic & Utilities
+       * -------------------------
+       */
+      
+      const SHIFT_DURATION_MINUTES = 210; // 3.5 hours
+
+      /**
+       * Calculates the departure time based on arrival time string (HH:mm).
+       * Adds 3 hours and 30 minutes.
+       */
+      const calculateDepartureTime = (arrivalStr) => {
+        if (!arrivalStr) return null;
+
+        const [hoursStr, minutesStr] = arrivalStr.split(':');
+        const hours = parseInt(hoursStr, 10);
+        const minutes = parseInt(minutesStr, 10);
+
+        if (isNaN(hours) || isNaN(minutes)) return null;
+
+        const date = new Date();
+        date.setHours(hours);
+        date.setMinutes(minutes);
+        date.setSeconds(0);
+        date.setMilliseconds(0);
+
+        // Store original day to check for rollover
+        const originalDay = date.getDate();
+
+        // Add shift duration
+        date.setMinutes(date.getMinutes() + SHIFT_DURATION_MINUTES);
+
+        const isNextDay = date.getDate() !== originalDay;
+
+        // Format the output manually to ensure consistent HH:MM AA format
+        let displayHours = date.getHours();
+        const displayMinutes = date.getMinutes();
+        const period = displayHours >= 12 ? 'PM' : 'AM';
+
+        displayHours = displayHours % 12;
+        displayHours = displayHours ? displayHours : 12; // the hour '0' should be '12'
+
+        const formattedMinutes = displayMinutes < 10 ? `0${displayMinutes}` : displayMinutes;
+
+        return {
+          time: `${displayHours}:${formattedMinutes}`,
+          period: period,
+          isNextDay
+        };
+      };
+
+      /**
+       * Returns current time in HH:mm format for input initialization
+       */
+      const getCurrentTimeInputValue = () => {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      };
+
+      /**
+       * -------------------------
+       * Components (Icons)
+       * -------------------------
+       */
+      
+      const Clock = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      );
+
+      const Briefcase = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+      );
+
+      const ArrowRight = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+        </svg>
+      );
+
+      const Sun = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+        </svg>
+      );
+
+      /**
+       * -------------------------
+       * Main Application
+       * -------------------------
+       */
+
+      const App = () => {
+        // Initialize with current time for convenience
+        const [arrivalTime, setArrivalTime] = useState(getCurrentTimeInputValue());
+
+        const departureTime = useMemo(() => {
+          return calculateDepartureTime(arrivalTime);
+        }, [arrivalTime]);
+
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+              
+              {/* Header Section */}
+              <div className="bg-indigo-600 p-6 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                   <div className="absolute -top-10 -right-10 w-32 h-32 bg-white rounded-full blur-2xl"></div>
+                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400 rounded-full blur-xl"></div>
+                </div>
+                
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="p-3 bg-white/20 backdrop-blur-md rounded-full mb-3 shadow-sm">
+                    <Briefcase className="w-8 h-8 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">Shift Calculator</h1>
+                  <p className="text-indigo-100 text-sm mt-1 font-medium">Plan your departure time</p>
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="p-6 sm:p-8 space-y-8">
+                
+                {/* Input Group */}
+                <div className="space-y-3">
+                  <label htmlFor="arrival-time" className="block text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                    When did you arrive?
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Clock className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    </div>
+                    <input
+                      type="time"
+                      id="arrival-time"
+                      value={arrivalTime}
+                      onChange={(e) => setArrivalTime(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm hover:bg-white"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 text-right">Format: HH:MM AM/PM</p>
+                </div>
+
+                {/* Divider with Icon */}
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative bg-white px-4 text-slate-400">
+                     <div className="bg-slate-50 p-2 rounded-full border border-slate-100">
+                      <ArrowRight className="w-4 h-4" />
+                     </div>
+                  </div>
+                </div>
+
+                {/* Result Section */}
+                <div className="bg-indigo-50/50 rounded-xl p-6 border border-indigo-100 text-center space-y-2 transition-all duration-300 hover:shadow-md hover:border-indigo-200">
+                  <span className="text-indigo-600 text-sm font-semibold uppercase tracking-wide">
+                    Earliest Departure
+                  </span>
+                  <div className="flex items-center justify-center space-x-2">
+                    {departureTime ? (
+                      <>
+                        <span className="text-4xl sm:text-5xl font-bold text-slate-800 tracking-tight">
+                          {departureTime.time}
+                        </span>
+                        <span className="text-lg text-slate-500 font-medium self-end mb-1">
+                          {departureTime.period}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-2xl text-slate-400 italic">--:-- --</span>
+                    )}
+                  </div>
+                   
+                   {departureTime?.isNextDay && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md font-medium mt-2">
+                        <Sun className="w-3 h-3" />
+                        <span>Next Day</span>
+                      </div>
+                   )}
+                    {!departureTime?.isNextDay && departureTime && (
+                      <div className="mt-2 h-6"></div> /* Spacer to prevent layout shift */
+                    )}
+                </div>
+
+                {/* Information Note */}
+                <div className="bg-slate-50 p-4 rounded-lg flex gap-3 items-start border border-slate-100">
+                  <div className="mt-0.5">
+                     <Clock className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Based on a minimum requirement of <strong className="text-slate-700">3 hours and 30 minutes</strong> per shift. 
+                    Calculated automatically as you update your arrival time.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+</body>
+</html>
